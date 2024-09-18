@@ -203,8 +203,25 @@ Network* create_network(int num_layer){
 	return network; 
 }
 
-void train_network(int num_layer, int epoch, int learning_rate, Layer* layer){
+// DataType //
+//***********//
+
+typedef struct DataType{
 	
+} DataType;
+
+// Data Structure //
+//****************//
+typedef struct Data{
+	Data
+} Data;
+
+void train_network(int num_layer, int epochs, int learning_rate, Layer* layer){
+	
+	for (int e = 0; e<epochs; e++){
+		double error = 0.0;
+		for (int i = 0; i<
+	}
 }
 
 
