@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <stdlib.h>
 
-#define LEARNING_RATE
+#define LEARNING_RATE 0.1
 
 // activation functions
 double sigmoid(double x){
@@ -13,13 +14,26 @@ double sigmoid_prime(double x){
 	return sigmoid(x)*(1-sigmoid(x));
 }
 
-double tanh(double x){
-	return 0.0;
+double tanh_prime(double x){
+	return 1-tanh(x)*tanh(x);
+}
+
+double mse(double y, double y_pred){
+	return (y-y_pred)*(y-y_pred);
+}
+
+double mse_prime(double y, double y_pred){
+	return (y-y_pred);
 }
 
 /* 
  * class BaseLayer
  */
+
+typedef struct Layer  Layer;
+typedef struct DenseLayer DenseLayer;
+typedef struct ActivationLayer ActivationLayer;
+
 typedef struct Layer{
     double* output;
 	int output_size;
@@ -37,6 +51,8 @@ typedef struct DenseLayer{
 	double* biases;
 	double* grad_weights;
 	double* grad_biases;	
+	double* output; // double it bc problem using the one on layer
+	int output_size;// double it bc problem using the one on layer
 } DenseLayer;
 
 /*
@@ -46,6 +62,8 @@ typedef struct ActivationLayer{
 	Layer base;
 	double (*activation)(double input);
 	double (*activation_prime)(double input);	
+	double* output; // double it bc problem using the one on layer
+	int output_size;// double it bc problem using the one on layer
 } ActivationLayer;
 
 // Memory allocation //
@@ -55,14 +73,6 @@ double* allocate_1D(int size){
 	return (double*) malloc(sizeof(double)*size);	
 }
 
-double* allocate_2D(int size_row, int size_column){
-	double ** res =(double**) malloc(sizeof(double*)*size_row);
-	for (int i = 0; i< size_row; i++){
-		res[i] =(double*) malloc(sizeof(double)*size_column);
-	}
-	return res;
-}
-
 /*** DenseLayer definition ***/
 /*****************************/
 
@@ -70,9 +80,9 @@ void forward_dense_layer(double* input, Layer* layer){
 	DenseLayer* dense_layer = (DenseLayer*)layer;
 	
 	for(int i = 0; i<dense_layer->base.output_size; i++){
-		dense_layer->base.output[i] = dense_layer->biases[i];
+		dense_layer->output[i] = dense_layer->biases[i];
 		for(int j = 0; j < dense_layer->input_size; j++){
-			dense_layer->base.output[i] += input[j]*dense_layer->weights[i*dense_layer->base.output_size + j]; 
+			dense_layer->output[i] += input[j]*dense_layer->weights[i*dense_layer->output_size + j]; 
 		}
 	}
 }
@@ -80,15 +90,15 @@ void forward_dense_layer(double* input, Layer* layer){
 void backward_dense_layer(double* input, double* gradient,Layer* layer){
 	DenseLayer* dense_layer = (DenseLayer*)layer;
 
-	for(int i = 0; i<dense_layer->base.output_size; i++){
+	for(int i = 0; i<dense_layer->output_size; i++){
 		for(int j = 0; j< dense_layer->input_size; j++){
-			dense_layer->grad_weights[i*dense_layer->base.output_size+j] = input[j]*gradient[i];
+			dense_layer->grad_weights[i*dense_layer->output_size+j] = input[j]*gradient[i];
 			// update weights
-			dense_layer->weights[i*dense_layer->base.output_size+j] -= LEARNING_RATE*dense_layer->grad_weights[i*dense_layer->base.output_size+j];
+			dense_layer->weights[i*dense_layer->output_size+j] -= LEARNING_RATE*(dense_layer->grad_weights[i*dense_layer->output_size+j]);
 		}
 		dense_layer->grad_biases[i] = gradient[i];
 		// update biases
-		dense_layer->biasas[i] -= LEARNING_RATE*dense_layer->grad_biases[i];
+		dense_layer->biases[i] -= LEARNING_RATE*dense_layer->grad_biases[i];
 	}
 }
 
@@ -105,10 +115,12 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 	// init sizes
 	dense_layer->input_size = input_size;
 	dense_layer->base.output_size = output_size;
+	dense_layer->output_size = output_size;
 
-	srand(NULL);
+	srand(time(NULL));
 	// init ouput
 	dense_layer->base.output = allocate_1D(output_size);
+	dense_layer->output = dense_layer->base.output;
 
 	// random init biases
 	dense_layer->biases = allocate_1D(output_size);
@@ -126,6 +138,7 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 	dense_layer->grad_weights = allocate_1D(input_size*output_size);
 	dense_layer->grad_biases = allocate_1D(output_size);
 
+
 	// link forward and backward functions
 	dense_layer->base.forward = forward_dense_layer;
 	dense_layer->base.backward = backward_dense_layer;
@@ -138,14 +151,14 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 /**********************************/
 void forward_activation_layer(double* input, Layer* layer){
     ActivationLayer* activation_layer = (ActivationLayer*) layer;
-	for (int i = 0; i<activation_layer->size; i++){
-		activation_layer->base.output[i] = activation_layer->activation(input[i]);	
+	for (int i = 0; i<activation_layer->base.output_size; i++){
+		activation_layer->output[i] = activation_layer->activation(input[i]);	
 	}
 }
 
 void backward_activation_layer(double* input, double* gradient, Layer* layer){
     ActivationLayer* activation_layer = (ActivationLayer*) layer;
-	for (int i = 0; i<activation_layer->size; i++){
+	for (int i = 0; i<activation_layer->output_size; i++){
 		gradient[i] *= activation_layer->activation_prime(input[i]);	
 	}
 }
@@ -157,8 +170,10 @@ ActivationLayer* create_activation_layer(int size,
 	ActivationLayer* activation_layer = (ActivationLayer*) malloc(sizeof(ActivationLayer));
 	
 	// init size and output
-	activation_layer->size = size;
+	activation_layer->base.output_size = size;
+	activation_layer->output_size = size;
 	activation_layer->base.output = allocate_1D(size);
+	activation_layer->output = activation_layer->base.output;
 	
 	// init forward and backward
 	activation_layer->base.forward = forward_activation_layer;
@@ -190,7 +205,7 @@ double* network_forward(double* input, Network* network){
 		// forward for this layer
 		network->layers[i]->forward(current_input,network->layers[i]);
 		// the output of this layer becomes the input of the next one
-		current_input = (double*) network->layers[i]->base.output;
+		current_input = (double*) network->layers[i]->output;
 	}
 	// its now the output of the whole network
 	return current_input;
@@ -198,22 +213,23 @@ double* network_forward(double* input, Network* network){
 
 void network_backward(double* target, Network* network){
 
-	double* output_error = (double*)malloc(sizeof(double)*data_size);
+	int output_size = network->layers[network->num_layer-1]->output_size;
+
+	double* output_error = (double*)malloc(sizeof(double)*output_size);
 	double* current_gradient = NULL;
-    int output_size = network->layers[network->num_layer-1].base->output_size;
 	int current_gradient_size = 0;
 
 	// init values for the first iteration
-	for (int i =0; i<data_size;i++){
+	for (int i =0; i<output_size;i++){
 		// add here your error metrics (eg mse..)
-		output_error[i] = mse_prime(target[i],network->layers[network->num_layer-1][i]);
+		output_error[i] = mse_prime(target[i],network->layers[network->num_layer-1]->output[i]);
 	}
 
 	current_gradient = output_error;
 
 	for(int i = network->num_layer-1; i>=0; i--){
-		output_size = network->layers->output_size;
-		network->layers[i]->backward(NULL,gradient,network->layers[i]);
+		output_size = network->layers[i]->output_size;
+		network->layers[i]->backward(NULL,current_gradient,network->layers[i]);
     
 		if (i!=network->num_layer && current_gradient_size != output_size){
 			current_gradient_size = output_size;
@@ -224,28 +240,14 @@ void network_backward(double* target, Network* network){
 
 Network* create_network(int num_layer){
 	Network* network = (Network*) malloc(sizeof(Network));
-	network->num_layer = num_laye;
+	network->num_layer = num_layer;
 	network->layers = (Layer**) malloc(sizeof(Layer*)*num_layer);
 
 	return network; 
 }
 
-double mse(double y, double y_pred){
-	return (y-y_pred)*(y-y_pred);
-}
-*
-double mse_prime(double y, double y_pred){
-	return (y-y_pred);
-}
-
-double* train_network(int num_layer, int epochs, int learning_rate, Network* network,
+void train_network(int num_layer, int epochs, int learning_rate, Network* network,
 					double** inputs, double** outputs, int data_size, int num_samples){
-	
-	double* predicted_output = (double*) malloc(sizeof(double)*data_size*num_samples);
-	if(predicted_output == NULL){
-		perror("preidcted result init failed");
-		return NULL;	
-	}
 
 	for (int e = 0; e<epochs; e++){
 		double error = 0.0;
@@ -254,16 +256,72 @@ double* train_network(int num_layer, int epochs, int learning_rate, Network* net
 			network_forward(inputs[i],network);
 
 			// compute error and gradient error
-			double output_size = network[network->num_layer-1].base->output_size;
+			double output_size = network->layers[network->num_layer-1]->output_size;
 			for(int j = 0; j<output_size ; j++){
-				error += mse(outputs[i][j],network->layers[network->num_layer-1].base->output[j]);
+				error += mse(outputs[i][j],network->layers[network->num_layer-1]->output[j]);
 			}
 		
 			// backward
 			network_backward(inputs[i],network);
 			
 		}
+
+		if (e%200==0){
+			printf("epoch n%d error = %f \n",e,error/(num_samples*data_size));
+		}
 	}
+}
+
+int main(){
+	// Initialize layers, num_layers, and other parameters
+	// dense layers
+    DenseLayer* dense_layer1 = create_dense_layer(2,4);
+	DenseLayer* dense_layer2 = create_dense_layer(3,1);
+
+	// activation layers
+	ActivationLayer* activation_layer1 = create_activation_layer(4,tanh,tanh_prime);
+	ActivationLayer* activation_layer2 = create_activation_layer(1,tanh,tanh_prime);
+
+	// create network
+	int num_layers = 4;
+	Network* network = create_network(num_layers);
+
+    // Example input and output data
+    double inputs[4][2] = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
+    double outputs[4][1] = { {0}, {1}, {1}, {0} };
+    
+    // Convert to double pointers for the function call
+    double* input_pointers[4];
+    double* output_pointers[4];
+    for (int i = 0; i < 4; i++) {
+        input_pointers[i] = inputs[i];
+        output_pointers[i] = outputs[i];
+    }
+
+    // Train the network
+    double* results = train(network, num_layers, 10000, 0.01, input_pointers, output_pointers, 4, 2, 1);
+
+    if (results != NULL) {
+        // Print or use the final outputs
+        for (int i = 0; i < 4; i++) {
+            printf("Sample %d Output: ", i);
+            for (int j = 0; j < 1; j++) {
+                printf("%f ", results[i * 1 + j]);
+            }
+            printf("\n");
+        }
+        free(results);  // Free the memory allocated for final outputs
+    }
+
+    // Cleanup pointers
+	free(dense_layer1);
+	free(dense_layer2);
+	free(activation_layer1);
+	free(activation_layer2);
+
+	free(network);
+
+    return 0;
 }
 
 
