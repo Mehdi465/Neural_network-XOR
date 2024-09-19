@@ -2,6 +2,8 @@
 #include <time.h>
 #include <math.h>
 
+#define LEARNING_RATE
+
 // activation functions
 double sigmoid(double x){
 	return 1/(1+exp(-x));	
@@ -19,6 +21,8 @@ double tanh(double x){
  * class BaseLayer
  */
 typedef struct Layer{
+    double* output;
+	int output_size;
 	void (*forward)(double* input, Layer* layer);
 	void (*backward)(double* input, double* gradient, Layer* layer);
 }Layer;
@@ -29,8 +33,6 @@ typedef struct Layer{
 typedef struct DenseLayer{
 	Layer base;
 	int input_size;
-	int output_size;
-	double* output;
     double* weights;
 	double* biases;
 	double* grad_weights;
@@ -44,8 +46,6 @@ typedef struct ActivationLayer{
 	Layer base;
 	double (*activation)(double input);
 	double (*activation_prime)(double input);	
-    double* output;
-    int size;
 } ActivationLayer;
 
 // Memory allocation //
@@ -69,10 +69,10 @@ double* allocate_2D(int size_row, int size_column){
 void forward_dense_layer(double* input, Layer* layer){
 	DenseLayer* dense_layer = (DenseLayer*)layer;
 	
-	for(int i = 0; i<dense_layer->output_size; i++){
-		dense_layer->output[i] = dense_layer->biases[i];
+	for(int i = 0; i<dense_layer->base.output_size; i++){
+		dense_layer->base.output[i] = dense_layer->biases[i];
 		for(int j = 0; j < dense_layer->input_size; j++){
-			dense_layer->output[i] += input[j]*dense_layer->weights[i*dense_layer->output_size + j]; 
+			dense_layer->base.output[i] += input[j]*dense_layer->weights[i*dense_layer->base.output_size + j]; 
 		}
 	}
 }
@@ -80,11 +80,15 @@ void forward_dense_layer(double* input, Layer* layer){
 void backward_dense_layer(double* input, double* gradient,Layer* layer){
 	DenseLayer* dense_layer = (DenseLayer*)layer;
 
-	for(int i = 0; i<dense_layer->output_size; i++){
+	for(int i = 0; i<dense_layer->base.output_size; i++){
 		for(int j = 0; j< dense_layer->input_size; j++){
-			dense_layer->grad_weights[i*dense_layer->output_size+j] = input[j]*gradient[i];
+			dense_layer->grad_weights[i*dense_layer->base.output_size+j] = input[j]*gradient[i];
+			// update weights
+			dense_layer->weights[i*dense_layer->base.output_size+j] -= LEARNING_RATE*dense_layer->grad_weights[i*dense_layer->base.output_size+j];
 		}
-		dense_layer->grad_biases[i] = (gradient[i]);
+		dense_layer->grad_biases[i] = gradient[i];
+		// update biases
+		dense_layer->biasas[i] -= LEARNING_RATE*dense_layer->grad_biases[i];
 	}
 }
 
@@ -100,15 +104,15 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 
 	// init sizes
 	dense_layer->input_size = input_size;
-	dense_layer->output_size = output_size;
+	dense_layer->base.output_size = output_size;
 
 	srand(NULL);
 	// init ouput
-	dense_layer->output = allocate_1D(output_size);
+	dense_layer->base.output = allocate_1D(output_size);
 
 	// random init biases
 	dense_layer->biases = allocate_1D(output_size);
-	for (int i = 0; i < dense_layer->output_size; i++){
+	for (int i = 0; i < dense_layer->base.output_size; i++){
 		dense_layer->biases[i] = ((double)rand()/(double)RAND_MAX); 
 	}
 
@@ -135,7 +139,7 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 void forward_activation_layer(double* input, Layer* layer){
     ActivationLayer* activation_layer = (ActivationLayer*) layer;
 	for (int i = 0; i<activation_layer->size; i++){
-		activation_layer->output[i] = activation_layer->activation(input[i]);	
+		activation_layer->base.output[i] = activation_layer->activation(input[i]);	
 	}
 }
 
@@ -154,7 +158,7 @@ ActivationLayer* create_activation_layer(int size,
 	
 	// init size and output
 	activation_layer->size = size;
-	activation_layer->output = allocate_1D(size);
+	activation_layer->base.output = allocate_1D(size);
 	
 	// init forward and backward
 	activation_layer->base.forward = forward_activation_layer;
@@ -186,44 +190,78 @@ double* network_forward(double* input, Network* network){
 		// forward for this layer
 		network->layers[i]->forward(current_input,network->layers[i]);
 		// the output of this layer becomes the input of the next one
-		current_input = (double*) network->layers[i]->output;
+		current_input = (double*) network->layers[i]->base.output;
 	}
 	// its now the output of the whole network
 	return current_input;
 }
 
-void network_backward(double* gradient, Network* network){
-	for(int i = 0; i<network->num_layer; i++){
+void network_backward(double* target, Network* network){
+
+	double* output_error = (double*)malloc(sizeof(double)*data_size);
+	double* current_gradient = NULL;
+    int output_size = network->layers[network->num_layer-1].base->output_size;
+	int current_gradient_size = 0;
+
+	// init values for the first iteration
+	for (int i =0; i<data_size;i++){
+		// add here your error metrics (eg mse..)
+		output_error[i] = mse_prime(target[i],network->layers[network->num_layer-1][i]);
+	}
+
+	current_gradient = output_error;
+
+	for(int i = network->num_layer-1; i>=0; i--){
+		output_size = network->layers->output_size;
 		network->layers[i]->backward(NULL,gradient,network->layers[i]);
+    
+		if (i!=network->num_layer && current_gradient_size != output_size){
+			current_gradient_size = output_size;
+			current_gradient = realloc(current_gradient,sizeof(double)*current_gradient_size);
+		}
 	}
 }
 
 Network* create_network(int num_layer){
 	Network* network = (Network*) malloc(sizeof(Network));
-	network->num_layer = num_layer;
+	network->num_layer = num_laye;
 	network->layers = (Layer**) malloc(sizeof(Layer*)*num_layer);
 
 	return network; 
 }
 
-// DataType //
-//***********//
+double mse(double y, double y_pred){
+	return (y-y_pred)*(y-y_pred);
+}
+*
+double mse_prime(double y, double y_pred){
+	return (y-y_pred);
+}
 
-typedef struct DataType{
+double* train_network(int num_layer, int epochs, int learning_rate, Network* network,
+					double** inputs, double** outputs, int data_size, int num_samples){
 	
-} DataType;
+	double* predicted_output = (double*) malloc(sizeof(double)*data_size*num_samples);
+	if(predicted_output == NULL){
+		perror("preidcted result init failed");
+		return NULL;	
+	}
 
-// Data Structure //
-//****************//
-typedef struct Data{
-	DataType data_type;
-} Data;
-
-void train_network(int num_layer, int epochs, int learning_rate, Layer* layer){
 	for (int e = 0; e<epochs; e++){
 		double error = 0.0;
-		for (int i = 0; i<4; i++){
+		for (int i = 0; i<num_samples; i++){
+			// forward
+			network_forward(inputs[i],network);
 
+			// compute error and gradient error
+			double output_size = network[network->num_layer-1].base->output_size;
+			for(int j = 0; j<output_size ; j++){
+				error += mse(outputs[i][j],network->layers[network->num_layer-1].base->output[j]);
+			}
+		
+			// backward
+			network_backward(inputs[i],network);
+			
 		}
 	}
 }
