@@ -23,7 +23,7 @@ double mse(double y, double y_pred){
 }
 
 double mse_prime(double y, double y_pred){
-	return (y-y_pred);
+	return 2*(y-y_pred);
 }
 
 /* 
@@ -107,7 +107,7 @@ void backward_dense_layer(double* input, double* gradient,Layer* layer){
 DenseLayer* create_dense_layer(int input_size, int output_size){
 	DenseLayer* dense_layer = (DenseLayer*) malloc(sizeof(DenseLayer));
 	// safe pointer init	
-	if(dense_layer = NULL){
+	if(dense_layer == NULL){
 		perror("init of denselayer pointer in create_dense_layer failed");
 		exit(1);
 	}
@@ -262,8 +262,7 @@ void train_network(int num_layer, int epochs, int learning_rate, Network* networ
 			}
 		
 			// backward
-			network_backward(inputs[i],network);
-			
+			network_backward(inputs[i],network);	
 		}
 
 		if (e%200==0){
@@ -274,6 +273,12 @@ void train_network(int num_layer, int epochs, int learning_rate, Network* networ
 
 int main(){
 	// Initialize layers, num_layers, and other parameters
+
+// init of size
+	int data_size = 2;
+	int output_size = 1;
+	int num_samples = 4;
+
 	// dense layers
     DenseLayer* dense_layer1 = create_dense_layer(2,4);
 	DenseLayer* dense_layer2 = create_dense_layer(3,1);
@@ -285,6 +290,11 @@ int main(){
 	// create network
 	int num_layers = 4;
 	Network* network = create_network(num_layers);
+	network->layers[0] = dense_layer1;
+	network->layers[1] = activation_layer1;
+	network->layers[2] = dense_layer2;
+	network->layers[3] = activation_layer2;
+
 
     // Example input and output data
     double inputs[4][2] = { {0, 0}, {0, 1}, {1, 0}, {1, 1} };
@@ -299,21 +309,11 @@ int main(){
     }
 
     // Train the network
-    double* results = train(network, num_layers, 10000, 0.01, input_pointers, output_pointers, 4, 2, 1);
+    train_network( num_layers, 10000, 0.01, network, input_pointers, output_pointers, num_samples, data_size);
 
-    if (results != NULL) {
-        // Print or use the final outputs
-        for (int i = 0; i < 4; i++) {
-            printf("Sample %d Output: ", i);
-            for (int j = 0; j < 1; j++) {
-                printf("%f ", results[i * 1 + j]);
-            }
-            printf("\n");
-        }
-        free(results);  // Free the memory allocated for final outputs
-    }
+    
 
-    // Cleanup pointers
+	// Cleanup pointers
 	free(dense_layer1);
 	free(dense_layer2);
 	free(activation_layer1);
