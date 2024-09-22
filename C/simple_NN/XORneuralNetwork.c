@@ -47,6 +47,7 @@ typedef struct Layer{
 typedef struct DenseLayer{
 	Layer base;
 	int input_size;
+	double* input;
     double* weights;
 	double* biases;
 	double* grad_weights;
@@ -64,6 +65,7 @@ typedef struct ActivationLayer{
 	double (*activation_prime)(double input);	
 	double* output; // double it bc problem using the one on layer
 	int output_size;// double it bc problem using the one on layer
+	double* input;
 } ActivationLayer;
 
 // Memory allocation //
@@ -78,11 +80,13 @@ double* allocate_1D(int size){
 
 void forward_dense_layer(double* input, Layer* layer){
 	DenseLayer* dense_layer = (DenseLayer*)layer;
+
+	dense_layer->input = input;
 	
 	for(int i = 0; i<dense_layer->base.output_size; i++){
 		dense_layer->output[i] = dense_layer->biases[i];
 		for(int j = 0; j < dense_layer->input_size; j++){
-			dense_layer->output[i] += input[j]*dense_layer->weights[i*dense_layer->output_size + j]; 
+			dense_layer->output[i] += input[j]*dense_layer->weights[i*dense_layer->input_size + j]; 
 		}
 	}
 }
@@ -92,9 +96,9 @@ void backward_dense_layer(double* input, double* gradient,Layer* layer){
 
 	for(int i = 0; i<dense_layer->output_size; i++){
 		for(int j = 0; j< dense_layer->input_size; j++){
-			dense_layer->grad_weights[i*dense_layer->output_size+j] = input[j]*gradient[i];
+			dense_layer->grad_weights[i*dense_layer->input_size+j] = dense_layer->input[j]*gradient[i];
 			// update weights
-			dense_layer->weights[i*dense_layer->output_size+j] -= LEARNING_RATE*(dense_layer->grad_weights[i*dense_layer->output_size+j]);
+			dense_layer->weights[i*dense_layer->input_size+j] -= LEARNING_RATE*(dense_layer->grad_weights[i*dense_layer->input_size+j]);
 		}
 		dense_layer->grad_biases[i] = gradient[i];
 		// update biases
@@ -229,7 +233,7 @@ void network_backward(double* target, Network* network){
 
 	for(int i = network->num_layer-1; i>=0; i--){
 		output_size = network->layers[i]->output_size;
-		network->layers[i]->backward(NULL,current_gradient,network->layers[i]);
+		network->layers[i]->backward(network->layers[i]->output,current_gradient,network->layers[i]);
     
 		if (i!=network->num_layer && current_gradient_size != output_size){
 			current_gradient_size = output_size;
@@ -280,20 +284,20 @@ int main(){
 	int num_samples = 4;
 
 	// dense layers
-    DenseLayer* dense_layer1 = create_dense_layer(2,4);
-	DenseLayer* dense_layer2 = create_dense_layer(3,1);
+    DenseLayer* dense_layer1 = create_dense_layer(2,1);
+	//DenseLayer* dense_layer2 = create_dense_layer(3,1);
 
 	// activation layers
-	ActivationLayer* activation_layer1 = create_activation_layer(4,tanh,tanh_prime);
-	ActivationLayer* activation_layer2 = create_activation_layer(1,tanh,tanh_prime);
+	//ActivationLayer* activation_layer1 = create_activation_layer(4,tanh,tanh_prime);
+	//ActivationLayer* activation_layer2 = create_activation_layer(1,tanh,tanh_prime);
 
 	// create network
-	int num_layers = 4;
+	int num_layers = 1;
 	Network* network = create_network(num_layers);
 	network->layers[0] = dense_layer1;
-	network->layers[1] = activation_layer1;
+	/*network->layers[1] = activation_layer1;
 	network->layers[2] = dense_layer2;
-	network->layers[3] = activation_layer2;
+	network->layers[3] = activation_layer2;*/
 
 
     // Example input and output data
@@ -315,9 +319,9 @@ int main(){
 
 	// Cleanup pointers
 	free(dense_layer1);
-	free(dense_layer2);
+	/*free(dense_layer2);
 	free(activation_layer1);
-	free(activation_layer2);
+	free(activation_layer2);*/
 
 	free(network);
 
