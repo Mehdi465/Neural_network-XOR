@@ -72,6 +72,21 @@ struct DenseLayer{
 	double* grad_biases;
 };
 
+double* forward_dense_layer(double* input, DenseLayer* layer){
+    DenseLayer* dense_layer = (DenseLayer*)layer;
+    dense_layer->base->input = input;
+    double* output = allocate_1d(dense_layer->base->output_size);
+
+    for(int i = 0; i<dense_layer->base->output_size; i++){
+		dense_layer->base->output[i] = dense_layer->biases[i];
+		for(int j = 0; j < dense_layer->base->input_size; j++){
+			dense_layer->base->output[i] += input[j]*dense_layer->weights[i][j]; 
+		}
+	}
+    output = dense_layer->base->output;
+    return output;
+}
+
 //create DenseLayer
 DenseLayer* create_dense_layer(int input_size, int output_size){
 	DenseLayer* dense_layer = (DenseLayer*) malloc(sizeof(DenseLayer));
@@ -96,13 +111,17 @@ DenseLayer* create_dense_layer(int input_size, int output_size){
 	}
     dense_layer->grad_biases = allocate_1d(output_size);
 
-    // init weights
-    dense_layer->weights = allocate_2d(output_size,input_size); 
+    // init weights random, and grad_weights
+    dense_layer->weights = allocate_2d(output_size,input_size);
+    for (int i = 0; i < output_size; i++){
+        for(int j = 0; j < input_size; j++){
+            dense_layer->weights[i][j] = ((double)rand()/(double)RAND_MAX); 
+        }
+	}	
+    dense_layer->grad_weights = allocate_2d(output_size,input_size); 
 
-
-    
-
-	
+    dense_layer->base->forward = forward_dense_layer;
+	dense_layer->base->backward = backward_dense_layer;
 
 	return dense_layer;
 }
