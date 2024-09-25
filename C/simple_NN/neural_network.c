@@ -56,8 +56,8 @@ struct BaseLayer {
     double* input;
     double* output;
 
-    double* (*forward)(double* input, BaseLayer* layer);
-	double* (*backward)(double* output_gradient, BaseLayer* layer);
+    void* (*forward)(double* input, BaseLayer* layer);
+	void* (*backward)(double* output_gradient, BaseLayer* layer);
 };
 
 /* 
@@ -72,7 +72,7 @@ struct DenseLayer{
 	double* grad_biases;
 };
 
-double* forward_dense_layer(double* input, DenseLayer* layer){
+void* forward_dense_layer(double* input, DenseLayer* layer){
     DenseLayer* dense_layer = (DenseLayer*)layer;
     dense_layer->base->input = input;
     double* output = allocate_1d(dense_layer->base->output_size);
@@ -83,11 +83,18 @@ double* forward_dense_layer(double* input, DenseLayer* layer){
 			dense_layer->base->output[i] += input[j]*dense_layer->weights[i][j]; 
 		}
 	}
-    output = dense_layer->base->output;
-    return output;
+	// realloc size to use it to receive the returned value
+	input = realloc(input, dense_layer->base->output_size);
+	// safety mechanisms
+	if (input == NULL){
+		perror("error in realloc forward dense");
+		exit(-1);
+	}
+	// the input becomes the output (input for the next layer)
+	input = output
 }
 
-double* backward_dense_layer(double* output_gradient, DenseLayer* layer){
+void backward_dense_layer(double* output_gradient, DenseLayer* layer){
     DenseLayer* dense_layer = (DenseLayer*)layer;
     
     double* res_gradient = allocate_1d(dense_layer->base->input_size);
@@ -102,8 +109,14 @@ double* backward_dense_layer(double* output_gradient, DenseLayer* layer){
         dense_layer->biases[i] -= LEARNING_RATE*output_gradient[i];
     }
 
-    return res_gradient;
+	output_gradient = realloc(output_gradient,layer->base->input_size);
+	if (output_gradient == NULL){
+		perror("error realloc in backward dense");
+		exit(-1);
+	}
+	output_gradient = res_gradient;
 }
+
 //create DenseLayer
 DenseLayer* create_dense_layer(int input_size, int output_size){
 	DenseLayer* dense_layer = (DenseLayer*) malloc(sizeof(DenseLayer));
@@ -153,7 +166,7 @@ typedef struct ActivationLayer{
 	double (*activation_prime)(double input);	
 } ActivationLayer;
 
-double* forward_activation_layer(double* input, BaseLayer* layer){
+void forward_activation_layer(double* input, BaseLayer* layer){
     ActivationLayer* activation_layer = (ActivationLayer*) layer;
     double* res = allocate_1d(activation_layer->base->input_size);
     activation_layer->base->input = input;
@@ -161,17 +174,21 @@ double* forward_activation_layer(double* input, BaseLayer* layer){
 		activation_layer->base->output[i] = activation_layer->activation(input[i]);	
 	}
     res = activation_layer->base->output;
-    return res;
+	input = realloc(input,layer->base->)
 }
 
-double* backward_activation_layer(double* gradient, BaseLayer* layer){
+void backward_activation_layer(double* gradient, BaseLayer* layer){
     ActivationLayer* activation_layer = (ActivationLayer*) layer;
     double* res_grad = allocate_1d(activation_layer->base->input_size);
 	for (int i = 0; i<activation_layer->base->output_size; i++){
 		res_grad[i] = activation_layer->activation_prime(activation_layer->base->input[i])*gradient[i];	
 	}
-
-    return gradient;
+	gradient = realloc(gradient, layer->base->input_size);
+	if (gradient == NULL){
+		perror("error in realloc gardient in backward_activation");
+		exit(-1);
+	}
+	gradient = res_gradient;
 }
 
 ActivationLayer* create_activation_layer(int size, 
@@ -217,7 +234,6 @@ Network* create_network(int num_layer){
 	return network; 
 }
 
-
 void train_network(int num_layer, int epochs, int learning_rate, Network* network,
 					double** inputs, double** outputs, int data_size, int num_samples){
 
@@ -228,10 +244,10 @@ void train_network(int num_layer, int epochs, int learning_rate, Network* networ
             double* output_forward = allocate_1d(data_size);
             output_forward = inputs[i];
             for (int j = 0; j<num_layer; j++){
-                output_forward = network->layers[j]->forward(output_forward,network->layers[i]);
+				output_forward = realloc(output_forward, network->layers[j]->base->
+                output_forward = network->layers[j]->forward(output_forward,network->layers[j]);
             }
 			
-
 			// compute error and gradient error
 			double output_size = network->layers[network->num_layer-1]->output_size;
 			for(int j = 0; j<output_size ; j++){
@@ -239,7 +255,11 @@ void train_network(int num_layer, int epochs, int learning_rate, Network* networ
 			}
 		
 			// backward
-			
+			int output_size = network->layers[num_layer-1]->base->output_size;
+			double* grad_output = allocate_1d(output_size);
+			for(int	j = 0; j < output_size; j++){
+				grad_output[j] = mse_prime(inputs[i][j],output_forward[])
+			}
 		}
 
 		if (e%200==0){
