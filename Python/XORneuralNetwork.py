@@ -64,3 +64,4 @@ plt.plot(result_list_1[1000:])
 plt.plot(result_list_2[1000:])
 plt.grid()
 plt.show() 
+

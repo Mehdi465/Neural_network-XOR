@@ -240,7 +240,6 @@ Network* create_network(int num_layer){
 }
 
 void network_forward(Network* network,double* input){
-
 	for (int i = 0; i<network->num_layer; i++){
 				BaseLayer* layer = network->layers[i];
         		layer->forward(input,network->layers[i]);
@@ -249,7 +248,7 @@ void network_forward(Network* network,double* input){
 }
 
 void network_backward(Network* network,double* grad_err){
-	for (int i = network->num_layer-1; i<=0; i++){
+	for (int i = network->num_layer-1; i<=0; i--){
 				BaseLayer* layer = network->layers[i];
         		layer->backward(grad_err,network->layers[i]);
             }
@@ -262,7 +261,7 @@ void train_network(int num_layer, int epochs, int learning_rate, Network* networ
 		double error = 0.0;
 		for (int i = 0; i<num_samples; i++){
 			// forward 
-            double* output_forward = allocate_1d(data_size);
+            double* output_forward = (double*) malloc(sizeof(double)*data_size);//allocate_1d(data_size);
             output_forward = inputs[i];
 			network_forward(network,output_forward);
 			
@@ -303,7 +302,7 @@ void free_dense_layer(DenseLayer* layer) {
     //input and output
     free(layer->base->input);
     free(layer->base->output);
-    // baselayer
+    // baselayr
     free(layer->base);
     //layer
     free(layer);
@@ -316,14 +315,13 @@ void free_activation_layer(ActivationLayer* layer) {
     free(layer);
 }
 
-int main(){
+int main(int argc, char* argv[]){
 	// Initialize layers, num_layers, and other parameters
-
-// init of size
+	// init of size
 	int data_size = 2;
 	int output_size = 1;
 	int num_samples = 4;
-
+	
 	// dense layers
     DenseLayer* dense_layer1 = create_dense_layer(data_size,output_size);
 	//DenseLayer* dense_layer2 = create_dense_layer(3,1);
