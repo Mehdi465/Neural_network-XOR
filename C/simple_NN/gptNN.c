@@ -289,23 +289,29 @@ int main() {
     // Create a network with 1 dense layer and 1 activation layer
     DenseLayer* dense1 = create_dense_layer(2, 4); // 2 inputs, 2 outputs
     ActivationLayer* activation1 = create_activation_layer(2, tanh, tanh_prime);
-    DenseLayer* dense2 = create_dense_layer(4, 1); // 2 inputs, 1 output
-    ActivationLayer* activation2 = create_activation_layer(1, tanh, tanh_prime);
+    DenseLayer* dense2 = create_dense_layer(4, 5); // 2 inputs, 1 output
+    ActivationLayer* activation2 = create_activation_layer(5, tanh, tanh_prime);
+    DenseLayer* dense3 = create_dense_layer(5, 1); // 2 inputs, 1 output
+    ActivationLayer* activation3 = create_activation_layer(1, tanh, tanh_prime);
 
     Network* network = create_network(4);
     network->layers[0] = (BaseLayer*) dense1;
     network->layers[1] = (BaseLayer*) activation1;
     network->layers[2] = (BaseLayer*) dense2;
     network->layers[3] = (BaseLayer*) activation2;
+    network->layers[4] = (BaseLayer*) dense3;
+    network->layers[5] = (BaseLayer*) activation3;
 
     // Train the network
-    train(network, input_pointers, output_pointers, 4, 2, 1, 1000);
+    train(network, input_pointers, output_pointers, 4, 2, 1, 10000);
 
     // Free memory
     free_dense_layer(dense1);
     free_dense_layer(dense2);
+    free_dense_layer(dense3);
     free_activation_layer(activation1);
     free_activation_layer(activation2);
+    free_activation_layer(activation3);
     free(network->layers);
     free(network);
 
