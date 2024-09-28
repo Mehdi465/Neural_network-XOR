@@ -323,20 +323,20 @@ int main(int argc, char* argv[]){
 	int num_samples = 4;
 	
 	// dense layers
-    DenseLayer* dense_layer1 = create_dense_layer(data_size,output_size);
-	//DenseLayer* dense_layer2 = create_dense_layer(3,1);
+    DenseLayer* dense_layer1 = create_dense_layer(data_size,4);
+	DenseLayer* dense_layer2 = create_dense_layer(4,1);
 
 	// activation layers
-	//ActivationLayer* activation_layer1 = create_activation_layer(4,tanh,tanh_prime);
-	//ActivationLayer* activation_layer2 = create_activation_layer(1,tanh,tanh_prime);
+	ActivationLayer* activation_layer1 = create_activation_layer(4,tanh,tanh_prime);
+	ActivationLayer* activation_layer2 = create_activation_layer(1,tanh,tanh_prime);
 
 	// create network
-	int num_layers = 1;
+	int num_layers = 4;
 	Network* network = create_network(num_layers);
 	network->layers[0] = dense_layer1;
-	/*network->layers[1] = activation_layer1;
+	network->layers[1] = activation_layer1;
 	network->layers[2] = dense_layer2;
-	network->layers[3] = activation_layer2;*/
+	network->layers[3] = activation_layer2;
 
 
     // Example input and output data
@@ -358,9 +358,9 @@ int main(int argc, char* argv[]){
 	free_dense_layer(dense_layer1);
 	// Cleanup pointers
 	free(dense_layer1);
-	/*free(dense_layer2);
+	free(dense_layer2);
 	free(activation_layer1);
-	free(activation_layer2);*/
+	free(activation_layer2);
 
 	free(network);
 
