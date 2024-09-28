@@ -92,9 +92,10 @@ void forward_dense_layer(double* input, BaseLayer* layer) {
 
     // Compute the weighted sum
     for (int i = 0; i < dense->base.output_size; i++) {
+        // add biase
         dense->base.output[i] = dense->biases[i];
         for (int j = 0; j < dense->base.input_size; j++) {
-            dense->base.output[i] += input[j]*dense->weights[i][j];
+            dense->base.output[0] += input[0]*dense->weights[0][0];
         }
     }
 }
@@ -278,6 +279,9 @@ int main() {
     double inputs[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
     double outputs[4][1] = {{0}, {1}, {1}, {0}};
 
+    // init params
+    int num_layer = 6;
+
     // Convert to double pointers
     double* input_pointers[4];
     double* output_pointers[4];
@@ -294,7 +298,7 @@ int main() {
     DenseLayer* dense3 = create_dense_layer(5, 1); // 2 inputs, 1 output
     ActivationLayer* activation3 = create_activation_layer(1, tanh, tanh_prime);
 
-    Network* network = create_network(4);
+    Network* network = create_network(num_layer);
     network->layers[0] = (BaseLayer*) dense1;
     network->layers[1] = (BaseLayer*) activation1;
     network->layers[2] = (BaseLayer*) dense2;
