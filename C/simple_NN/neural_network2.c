@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define LEARNING_RATE 0.01
+
 enum LayerType {
     DenseLayer = 0,
     ActivationLayer = 1,
 };
-
-
-#define LEARNING_RATE 0.01
 
 // Activation functions
 double sigmoid(double x) {
@@ -73,23 +72,98 @@ typedef struct DenseLayer {
 * class ActivationLayer 
 */ 
 typedef struct ActivationLayer {
-    BaseLayer base;
     double (*activation)(double x);
     double (*activation_prime)(double x);
 } ActivationLayer;
 
 /*
-* class BaseLayer 
+* class Layer 
 */ 
-typedef struct BaseLayer {
+typedef struct Layer {
     int input_size;
     int output_size;
     double* input;
     double* output;
     void (*forward)(double* input, struct BaseLayer* layer);
     void (*backward)(double* output_gradient, struct BaseLayer* layer);
-    // enum type
+
     enum LayerType type;
     ActivationLayer* activation_layer;
-    DenseLayer dense_layer;
-} BaseLayer;
+    DenseLayer* dense_layer;
+} Layer;
+
+void forward_dense_layer(double* input, Layer* layer){
+    // check if its layer type
+    if (layer->type != 0){
+        perror("wrong layer type");
+        exit(-1);
+    }
+
+    layer->input = input;
+    // Compute the weighted sum
+    for (int i = 0; i < layer->output_size; i++) {
+        // add biase
+        layer->output[i] = layer->dense_layer->biases[i];
+        for (int j = 0; j < layer->input_size; j++) {
+            layer->output[i] += input[j]*layer->dense_layer->weights[i][j];
+        }
+    }
+}
+
+void forward_activation_layer(double* input, Layer* layer){
+    if (layer->type != 1){
+        perror("wrong layer type");
+        exit(-1);
+    }
+    layer->input = input;
+
+    for (int i = 0; i < layer->output_size; i++) {
+        layer->output[i] = layer->activation_layer->activation(input[i]);
+    }
+}
+
+void backard_dense_layer(double* output_gradient, Layer* layer){
+
+    if (layer->type != 0){
+        perror("wrong layer type");
+        exit(-1);
+    }
+
+    double* input_gradient = allocate_1d(layer->input_size);
+
+    for (int i = 0; i < layer->output_size; i++) {
+        for (int j = 0; j < layer->input_size; j++) {
+            layer->dense_layer->grad_weights[i][j] = layer->input[j] * output_gradient[i];
+            input_gradient[j] += layer->dense_layer->weights[i][j] * output_gradient[i];
+            // Update the weights
+            layer->dense_layer->weights[i][j] -= LEARNING_RATE * layer->dense_layer->grad_weights[i][j];
+        }
+        // Update biases
+        layer->dense_layer->grad_biases[i] = output_gradient[i];
+        layer->dense_layer->biases[i] -= LEARNING_RATE * layer->dense_layer->grad_biases[i];
+    }
+
+    // Update the gradient for the next layer
+    for (int i = 0; i < layer->input_size; i++) {
+        output_gradient[i] = input_gradient[i];
+    }
+    free(input_gradient);
+}
+
+void backward_activation_layer(double* output_gradient, Layer* layer){
+    if (layer->type != 1){
+        perror("wrong layer type");
+        exit(-1);
+    }
+    
+    for (int i = 0; i < layer->output_size; i++) {
+        output_gradient[i] = output_gradient[i] * layer->activation_layer->activation_prime(layer->input[i]);
+    }
+}
+
+Layer* create_dense_layer(int input_size, int output_size){
+    Layer* dense_layer = (Layer*) malloc(sizeof(Layer));
+
+    
+}
+

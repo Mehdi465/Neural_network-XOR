@@ -95,7 +95,7 @@ void forward_dense_layer(double* input, BaseLayer* layer) {
         // add biase
         dense->base.output[i] = dense->biases[i];
         for (int j = 0; j < dense->base.input_size; j++) {
-            dense->base.output[0] += input[0]*dense->weights[0][0];
+            dense->base.output[i] += input[j]*dense->weights[i][j];
         }
     }
 }
