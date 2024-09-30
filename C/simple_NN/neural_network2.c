@@ -164,6 +164,24 @@ void backward_activation_layer(double* output_gradient, Layer* layer){
 Layer* create_dense_layer(int input_size, int output_size){
     Layer* dense_layer = (Layer*) malloc(sizeof(Layer));
 
+    // init sizes
+    dense_layer->input_size = input_size;
+    dense_layer->output_size = output_size;
+
+    // init input and outputs
+    dense_layer->input = allocate_1d(input_size);
+    dense_layer->output = allocate_1d(output_size);
+
+    // init forward and backward
+    dense_layer->forward = forward_dense_layer;
+    dense_layer->backward = backard_dense_layer;
+
+    dense_layer->type = 0;
+    dense_layer->activation_layer = NULL;
+
     
+
+
+    return dense_layer;
 }
 
