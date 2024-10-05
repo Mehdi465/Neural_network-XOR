@@ -72,6 +72,5 @@ class Network {
 
         void forward_network();
         void backward_network();
-
-
+        void train_network(std::vector<std::vector<double>> inputs,std::vector<std::vector<double>> outputs, int num_samples, int input_size,int output_size, int epochs);
 };
