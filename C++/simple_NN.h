@@ -13,14 +13,13 @@ enum ActivationFunction {
 };
 
 class BaseLayer {
-    private:
+
+    public:
 
         int input_size;
         int output_size;
         std::vector<double> input;
         std::vector<double> output;
-    
-    public:
 
         virtual void forward(std::vector<double> input)=0;
         virtual void backward(std::vector<double> output_gradient)=0;
@@ -28,12 +27,14 @@ class BaseLayer {
 };
 
 class DenseLayer : public BaseLayer {
-
-    public:
+    private:
+    
         std::vector<double> biases;
         std::vector<double> grad_biases;
         std::vector<std::vector<double>> weights;
         std::vector<std::vector<double>> grad_weights;
+
+    public:
 
         //Constructors
         DenseLayer();
@@ -59,13 +60,13 @@ class ActivationLayer : public BaseLayer {
 };
 
 class Network {
-    private:
-
-        int num_layer;
-        std::vector<BaseLayer> layers;
+    
 
     public:
 
+        int num_layer;
+        std::vector<BaseLayer> layers;
+        
         // Constructors
         Network();
         Network(int num_layer);
