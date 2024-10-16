@@ -32,6 +32,8 @@ void DenseLayer::forward(std::vector<double> input){
 
 ActivationLayer::ActivationLayer() = default;
 
+ActivationLayer::ActivationLayer(int size){};
+
 
 
 int main(){
